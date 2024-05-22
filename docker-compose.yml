@@ -1,0 +1,63 @@
+version: '3.8'
+services:
+  mongodb:
+    image: mongo:latest
+    container_name: raadi-mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: rootpassword
+
+  auth-service:
+    build:
+      context: ./backend/auth-service
+    container_name: raadi-auth-service
+    ports:
+      - "5001:5000"
+    environment:
+      - NODE_ENV=development
+      - MONGO_URI=mongodb://root:rootpassword@mongodb:27017/auth-service?authSource=admin
+      - JWT_SECRET=your_jwt_secret
+    depends_on:
+      - mongodb
+
+  listing-service:
+    build:
+      context: ./backend/listing-service
+    container_name: raadi-listing-service
+    ports:
+      - "5002:5000"
+    environment:
+      - NODE_ENV=development
+      - MONGO_URI=mongodb://root:rootpassword@mongodb:27017/listing-service?authSource=admin
+    depends_on:
+      - mongodb
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: raadi-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - REACT_APP_AUTH_API_URL=http://localhost:5001
+      - REACT_APP_LISTING_API_URL=http://localhost:5002
+    depends_on:
+      - auth-service
+      - listing-service
+
+  mobile:
+    build:
+      context: ./mobile
+    container_name: raadi-mobile
+    ports:
+      - "8081:8081"
+    depends_on:
+      - auth-service
+      - listing-service
+
+volumes:
+  mongo-data:
